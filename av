@@ -1,0 +1,91 @@
+import cmath
+import math
+import numpy as np
+
+# System Base Values
+S_base = 100e6  
+V_base = 220e3  
+Z_base = (V_base ** 2) / S_base  # 484 Ohms
+f_base = 50.0
+f_target = 250.0
+h = f_target / f_base
+Z0 = complex(Z_base, 0)
+
+# Step 1: Input Data (50Hz values)
+line_data = {
+    'Line 0: NPOLP_2 -> KOTMA-2':   {'R': 0.001288, 'X': 0.014007, 'B': 0.04255,  'L': 23.0,  'DC': True},
+    'Line 1: NPOLP_2 -> HAMBAN-2':  {'R': 0.01185,  'X': 0.0948,   'B': 0.2928,   'L': 140.0, 'DC': True},
+    'Line 2: NPOLP_2 -> PADUKKA_2':  {'R': 0.004029, 'X': 0.032232, 'B': 0.099552, 'L': 51.0,  'DC': True},
+    'Line 3: KOTMA-2 -> UPPER-KOTH': {'R': 0.002907, 'X': 0.014791, 'B': 0.026731, 'L': 18.5,  'DC': False},
+    'Line 4: KOTMA-2 -> VICTO-2':    {'R': 0.00236,  'X': 0.01903,  'B': 0.05877,  'L': 30.1,  'DC': True},
+    'Line 5: KOTMA-2 -> BIYAG-2':    {'R': 0.00554,  'X': 0.04457,  'B': 0.13764,  'L': 70.5,  'DC': True},
+    'Line 6: KOTMA-2 -> NHAB-2':     {'R': 0.01774,  'X': 0.0904,   'B': 0.16329,  'L': 113.0, 'DC': True},
+    'Line 7: BARGE-2 -> KELAN-2':    {'R': 0.00005,  'X': 0.0006,   'B': 0.0688,   'L': 2.0,   'DC': False},
+    'Line 8: VICTO-2 -> RANDE-2':    {'R': 0.00129,  'X': 0.01037,  'B': 0.03201,  'L': 16.4,  'DC': False},
+    'Line 9: RANDE-2 -> RANTE-2':    {'R': 0.00024,  'X': 0.00196,  'B': 0.00606,  'L': 3.1,   'DC': False},
+    'Line 10: VAVUNIYA-2 -> MANNAR-2':{'R': 0.01099, 'X': 0.056,    'B': 0.10115,  'L': 70.0,  'DC': False},
+    'Line 11: VAVUNIYA-2 -> NEWANU-2':{'R': 0.004345,'X': 0.03476,  'B': 0.10736,  'L': 55.0,  'DC': True},
+    'Line 12: MANNAR-2 -> NADUKUDA-2':{'R': 0.00237, 'X': 0.01896,  'B': 0.05856,  'L': 30.0,  'DC': False},
+    'Line 13: KELAN-2 -> BIYAG-2':   {'R': 0.00134,  'X': 0.00764,  'B': 0.02361,  'L': 12.5,  'DC': False},
+    'Line 14: KERAWALA_2 -> NEW_KERA2':{'R': 0.000017,'X': 0.000212,'B': 0.016878, 'L': 0.5,   'DC': True},
+    'Line 15: KERAWALA_2 -> COL_L2': {'R': 0.00046,  'X': 0.00573,  'B': 0.4557,   'L': 13.5,  'DC': False},
+    'Line 16: NEW_KERA2 -> KOTUG-2':  {'R': 0.001422, 'X': 0.011376, 'B': 0.035136, 'L': 18.0,  'DC': True},
+    'Line 17: NEW_KERA -> KOTUG-2':   {'R': 0.001413, 'X': 0.01138,  'B': 0.035143, 'L': 18.0,  'DC': True},
+    'Line 18: PANNI-2 -> BIYAG-2':   {'R': 0.00185,  'X': 0.00942,  'B': 0.01702,  'L': 15.5,  'DC': False},
+    'Line 19: PANNI-D-2 -> BIYAG-2': {'R': 0.00185,  'X': 0.00942,  'B': 0.01702,  'L': 15.5,  'DC': False},
+    'Line 20: PANNI-D-2 -> PADUKKA_2':{'R': 0.001517,'X': 0.012134, 'B': 0.037478, 'L': 15.2,  'DC': True},
+    'Line 21: BIYAG-2 -> KOTUG-2':    {'R': 0.00308,  'X': 0.01567,  'B': 0.02832,  'L': 19.6,  'DC': False},
+    'Line 22: KOTUG-2 -> VEYAN-2':    {'R': 0.001343, 'X': 0.010744, 'B': 0.033184, 'L': 17.0,  'DC': False},
+    'Line 23: NHAB-2 -> NEWANU-2':   {'R': 0.00785,  'X': 0.04,     'B': 0.07225,  'L': 50.0,  'DC': False},
+    'Line 24: NEWANU-2 -> PUTTALAM-PS':{'R': 0.009019,'X': 0.063492, 'B': 0.185311, 'L': 100.0, 'DC': True},
+    'Line 25: PUTTALAM-PS -> NCHILAW-2':{'R': 0.004304,'X': 0.04478,  'B': 0.144367, 'L': 74.0,  'DC': True},
+    'Line 26: NCHILAW-2 -> VEYAN-2':  {'R': 0.003878, 'X': 0.027302, 'B': 0.079684, 'L': 43.0,  'DC': True}
+}
+
+def format_complex(c):
+    mag = abs(c)
+    angle = math.degrees(cmath.phase(c))
+    return f"{mag:.3f}∠{angle:.1f}°"
+
+# Step 2: Main Calculation Loop
+print(f"HARMONIC S-PARAMETERS AT {int(f_target)} Hz (h={int(h)})")
+print("=" * 105)
+print(f"{'Line Section ID':<35} | {'S11':<15} | {'S12':<15} | {'S21':<15} | {'S22':<15}")
+print("-" * 105)
+
+for line_id, p in line_data.items():
+    # Frequency scaling (No skin effect)
+    R_h = p['R']
+    X_h = p['X'] * h
+    B_h = p['B'] * h
+    
+    # Distributed parameters (Physical Units)
+    Z_phys = complex(R_h, X_h) * Z_base
+    Y_phys = complex(0, B_h) / Z_base
+    
+    # Propagation constant and Characteristic Impedance
+    gamma = cmath.sqrt((Z_phys/p['L']) * (Y_phys/p['L']))
+    Zc = cmath.sqrt((Z_phys/p['L']) / (Y_phys/p['L']))
+    
+    # Single Circuit ABCD
+    A = cmath.cosh(gamma * p['L'])
+    B = Zc * cmath.sinh(gamma * p['L'])
+    C = (1/Zc) * cmath.sinh(gamma * p['L'])
+    D = A
+    
+    # Parallel Circuit logic from Eq 4.33
+    if p['DC']:
+        B_eq = B / 2
+        C_eq = 2 * C
+    else:
+        B_eq = B
+        C_eq = C
+    
+    # Convert resulting ABCD to S-parameters (Table F.1)
+    denom = A + (B_eq / Z0) + (C_eq * Z0) + D
+    S11 = (A + (B_eq / Z0) - (C_eq * Z0) - D) / denom
+    S12 = (2 * (A*D - B_eq*C_eq)) / denom
+    S21 = 2 / denom
+    S22 = S11
+    
+    print(f"{line_id:<35} | {format_complex(S11):<15} | {format_complex(S12):<15} | {format_complex(S21):<15} | {format_complex(S22):<15}")
